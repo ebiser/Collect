@@ -1,0 +1,177 @@
+<html>
+<head>
+	<title>Collect</title>
+	<hta:application 
+		 APPLICATIONNAME="Collect"
+		 SCROLL="yes"
+		 SINGLEINSTANCE="yes"
+		 version="1"
+	>
+</head>
+
+<script language="VBScript">
+    Sub Samle
+		Const HKEY_LOCAL_MACHINE = &H80000002 
+		Const FOR_READING = 1 
+		Const FOR_WRITING = 2 
+		Const For_APPENDING = 8 
+		Set objFSO = CreateObject("Scripting.FileSystemObject") 
+		 
+		If Not objFSO.FileExists("Servers.txt") Then 
+			MsgBox "File not found 'Servers.txt'" 
+			ExitProgram
+		End If 
+		 
+		User_Disp_Name = InputBox("Please enter the product you want searched or leave it blank to generate the whole list of products")
+		
+		If (IsEmpty(User_Disp_Name)) Then
+			'cancelled
+			MsgBox "Operation has been cancelled"
+			ExitProgram
+		End If
+		
+		User_Output_FileName = InputBox("Please enter a name for the output file, leaving it blank would create a ProductList_Output_<TimeStamp>.csv file at the end of execution" & vbCrLf & "TimesStamp = Year-Month-Date-Hour-Minute-Second") 
+		
+		If (IsEmpty(User_Output_FileName)) Then
+			'cancelled
+			MsgBox "Operation has been cancelled"
+			ExitProgram
+		End If
+		
+		CurrentTime = Now() 
+		
+		TimeStamp = Year(CurrentTime) & "-" & Right("0" & Month(CurrentTime),2) & "-" & Right("0" & Day(CurrentTime),2) & "-" & Right("0" & Hour(CurrentTime),2) & "-" & Right("0" & Minute(CurrentTime),2) & "-" & Right("0" & Second(CurrentTime),2) 
+		 
+		If (IsEmpty(User_Disp_Name) or IsEmpty(User_Output_FileName)) Then
+			'cancelled
+			MsgBox "Operation has been cancelled"
+			WScript.Quit
+		End If
+		
+		If User_Output_FileName ="" Then 
+			User_Output_FileName = "ProductList_Output_" & TimeStamp & ".csv" 
+		Else 
+			User_Output_FileName = User_Output_FileName & ".csv"     
+		End If 
+		If Not objFSO.FileExists(User_Output_FileName) Then 
+			objFSO.CreateTextFile(User_Output_FileName) 
+		End If 
+		 
+		Set InputFile = objFSO.OpenTextFile("Servers.txt", FOR_READING) 
+		Set OutputFile = objFSO.OpenTextFile(User_Output_FileName, FOR_APPENDING) 
+		OutPutFile.WriteLine "Computer,Reg Key Path,Display Name,Display Version,Error" 
+		 
+		Do Until (InputFile.AtEndOfStream) 
+		 
+			strComputer = trim(InputFile.ReadLine) 
+			Count = 0 
+			Set objShell = CreateObject("WScript.Shell") 
+			If strComputer <> "" Then 
+		 
+				On Error Resume Next 
+				Set objReg = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & strComputer & strUser & strPass & "\root\default:StdRegProv") 
+				If Err.Number <> 0 Then 
+		 				OutPutFile.WriteLine strComputer & " , " & " , " & " , " & " , " & Err.Description 
+		 		Else 
+					Proc_Key = "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" 
+					ObjReg.GetStringValue HKEY_LOCAL_MACHINE , Proc_Key , "PROCESSOR_ARCHITECTURE" , Proc 
+		 
+					If Proc = "x86" Then 
+						strKeyPath1 = "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" 
+						strKeyPath3 = "SOFTWARE\Microsoft\InetStp"
+					Else 
+						strKeyPath1 = "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" 
+						strKeyPath2 = "SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+						strKeyPath3 = "SOFTWARE\Microsoft\InetStp"						
+					End If 
+		 
+					ObjReg.EnumKey HKEY_LOCAL_MACHINE, strKeyPath1, arrSubKeys 
+		 
+					For Each subkey In arrSubKeys 
+						strRegKeyPath = strKeyPath1 & "\" & subkey 
+						ObjReg.GetStringValue HKEY_LOCAL_MACHINE , strRegKeyPath , "DisplayName" , Reg_Disp_Name 
+		 
+						If Reg_Disp_Name <> "" Then 
+							If User_Disp_Name = "" Then 
+								ObjReg.GetStringValue HKEY_LOCAL_MACHINE , strRegKeyPath , "DisplayVersion" , Reg_Disp_Ver 
+								OutputFile.WriteLine strComputer &  " , " & strRegKeyPath & " , " & Reg_Disp_Name & " , " & Reg_Disp_Ver & " , " & Err.Description 
+								Count = Count + 1 
+							Else                     
+								If InStr(LCase(Reg_Disp_Name),LCase(User_Disp_Name)) > 0 Then 
+									ObjReg.GetStringValue HKEY_LOCAL_MACHINE , strRegKeyPath , "DisplayVersion" , Reg_Disp_Ver 
+									OutputFile.WriteLine strComputer &  " , " & strRegKeyPath & " , " & Reg_Disp_Name & " , " & Reg_Disp_Ver & " , " & Err.Description 
+									Count = Count + 1 
+								End If 
+							End If 
+						End If 
+					Next 
+		 
+					ObjReg.EnumKey HKEY_LOCAL_MACHINE, strKeyPath2, arrSubKeys 
+					 
+					For Each subkey In arrSubKeys 
+						strRegKeyPath = strKeyPath2 & "\" & subkey 
+						ObjReg.GetStringValue HKEY_LOCAL_MACHINE , strRegKeyPath , "DisplayName" , Reg_Disp_Name 
+		 
+						If Reg_Disp_Name <> "" Then 
+							If User_Disp_Name = "" Then 
+		 						ObjReg.GetStringValue HKEY_LOCAL_MACHINE , strRegKeyPath , "DisplayVersion" , Reg_Disp_Ver 
+								OutputFile.WriteLine strComputer &  " , " & strRegKeyPath & " , " & Reg_Disp_Name & " , " & Reg_Disp_Ver & " , " & Err.Description 
+								Count = Count + 1 
+							Else 
+								If InStr(LCase(Reg_Disp_Name),LCase(User_Disp_Name)) > 0 Then 
+									ObjReg.GetStringValue HKEY_LOCAL_MACHINE , strRegKeyPath , "DisplayVersion" , Reg_Disp_Ver 
+									OutputFile.WriteLine strComputer &  " , " & strRegKeyPath & " , " & Reg_Disp_Name & " , " & Reg_Disp_Ver & " , " & Err.Description 
+									Count = Count + 1 
+								End If 
+							End If 
+						End If 
+		 
+					Next 
+	 
+					If Count = 0 Then 
+						OutPutFile.WriteLine strComputer & " , " & " , " & " , "& " , " & "PRODUCT DOES NOT EXIST"     
+					End If         
+				 
+				End If 
+		 
+			End If 
+			Set objShell = Nothing 
+			Set objReg = Nothing 
+		 
+		OutPutFile.WriteLine 
+		Loop 
+		 
+		Set objFSO = Nothing 
+		MsgBox "Task Completed successfully!"
+    End Sub
+	
+	Sub ExitProgram
+		set objShell = nothing
+		window.close()
+	End Sub
+</script>
+
+<style type="text/css">
+	.button {
+		background-color: #f44336; /* Red */
+		border-radius: 8px;
+		border: none;
+		color: white;
+		padding: 15px 32px;
+		text-align: center;
+		text-decoration: none;
+		display: inline-block;
+		font-size: 16px;
+	}
+	.handle-0 { filter: alpha(opacity=20); -moz-opacity: 0.20; }
+	.handle-1 { filter: alpha(opacity=40); -moz-opacity: 0.40; }
+	.handle-2 { filter: alpha(opacity=60); -moz-opacity: 0.6; }
+	.handle-3 { filter: alpha(opacity=80); -moz-opacity: 0.8; }
+	.handle-4 { filter: alpha(opacity=100); -moz-opacity: 1; }
+</style>
+
+<body>
+<input type="button" class="button" value="Scan Servers" name="gather_button" onClick="Samle"><p>
+
+</body>
+</html>
