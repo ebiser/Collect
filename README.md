@@ -1,9 +1,9 @@
 # Collect
 registry scanner for installed software
 
-Version 1.0
--initial deployment of the application.
--basic error checking in place.
+1. Version 1.0
+..*initial deployment of the application.
+..*basic error checking in place.
 
 Background
 This application Collect.hta is a tool to scan server registry and capture installed software. The purpose is to give support team view 
